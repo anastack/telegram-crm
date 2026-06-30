@@ -6,7 +6,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent.parent
-load_dotenv(ROOT / ".env")
+
+# Загружаем .env если он существует
+env_file = ROOT / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
@@ -30,3 +34,4 @@ def get_admin_telegram_ids() -> list[int]:
             if part.isdigit():
                 ids.add(int(part))
     return sorted(ids)
+
