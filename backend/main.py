@@ -1,8 +1,8 @@
 """FastAPI — API для админ-панели."""
 
 import os
+import subprocess
 import sys
-import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time
 from pathlib import Path
@@ -26,19 +26,20 @@ from database.seed import seed_data
 
 
 def _start_bot():
-    """Запустить Telegram-бота в фоновом потоке."""
-    from bot.main import run_bot
-
-    run_bot()
+    """Запустить Telegram-бота в отдельном процессе."""
+    subprocess.Popen(
+        [sys.executable, "-m", "bot.main"],
+        cwd=str(ROOT),
+        start_new_session=True,
+    )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_data()
     if RUN_BOT and os.getenv("BOT_TOKEN"):
-        thread = threading.Thread(target=_start_bot, daemon=True)
-        thread.start()
-        print("Telegram-бот запущен в фоне")
+        _start_bot()
+        print("Telegram-бот запущен в отдельном процессе")
     if not WEBAPP_URL:
         print("ВНИМАНИЕ: WEBAPP_URL не задан — админ-панель в Telegram недоступна")
     yield
