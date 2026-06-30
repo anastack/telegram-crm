@@ -3,8 +3,19 @@
 const API_BASE = window.location.origin;
 const tg = window.Telegram?.WebApp;
 
+// Для тестирования в браузере - используем mock initData
+const MOCK_INIT_DATA = "query_id=test&user=%7B%22id%22%3A123%7D&auth_date=1234567890&hash=test";
+
 function getInitData() {
-  return tg?.initData || "";
+  if (tg?.initData) {
+    return tg.initData;
+  }
+  // Fallback для тестирования в браузере
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    console.warn("[API] Using mock initData for local testing");
+    return MOCK_INIT_DATA;
+  }
+  return "";
 }
 
 function getHeaders() {

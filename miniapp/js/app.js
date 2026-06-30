@@ -16,19 +16,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("[App] tg object:", tg);
   console.log("[App] tg.initData:", tg?.initData);
 
-  // Только через Telegram Mini App
-  if (!tg?.initData) {
-    console.log("[App] No initData, showing telegram gate");
+  // Проверяем, открыто ли через Telegram или локально
+  const isTelegram = !!tg?.initData;
+  const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  if (!isTelegram && !isLocalhost) {
+    console.log("[App] No initData and not localhost, showing telegram gate");
     document.getElementById("telegram-gate").classList.remove("hidden");
     return;
   }
 
   try {
-    console.log("[App] Initializing Telegram WebApp");
-    tg.ready();
-    tg.expand();
-    tg.setHeaderColor("#1a1d27");
-    tg.setBackgroundColor("#0f1117");
+    if (isTelegram) {
+      console.log("[App] Initializing Telegram WebApp");
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor("#1a1d27");
+      tg.setBackgroundColor("#0f1117");
+    } else {
+      console.log("[App] Running in browser test mode");
+    }
 
     document.getElementById("app-root").classList.remove("hidden");
 
