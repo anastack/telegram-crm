@@ -1,6 +1,5 @@
 """Начальные данные: услуги и исполнители."""
 
-import urllib.request
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -20,14 +19,6 @@ SERVICE_IMAGES = {
     "Консультация": "consult.jpg",
 }
 
-# Прямые ссылки для скачивания фото на компьютер (один раз при первом запуске)
-IMAGE_DOWNLOAD_URLS = {
-    "strizhka.jpg": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Barber_haircut.jpg/800px-Barber_haircut.jpg",
-    "manicure.jpg": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Nail_art.jpg/800px-Nail_art.jpg",
-    "massage.jpg": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Spa_massage.jpg/800px-Spa_massage.jpg",
-    "consult.jpg": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Doctor_consultation.jpg/800px-Doctor_consultation.jpg",
-}
-
 # Услуга: (название, длительность, цена, [имена мастеров])
 SERVICES_DATA = [
     ("Стрижка", 60, 1500, ["Анна", "Дмитрий"]),
@@ -37,25 +28,10 @@ SERVICES_DATA = [
 ]
 
 
-def download_image(url: str, file_path: Path) -> bool:
-    """Скачать фото на диск."""
-    try:
-        request = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (CRM-Bot)"},
-        )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            file_path.write_bytes(response.read())
-        return file_path.exists() and file_path.stat().st_size > 0
-    except Exception as e:
-        print(f"Не удалось скачать {file_path.name}: {e}")
-        return False
-
-
 def create_placeholder_image(file_path: Path, title: str, color: tuple[int, int, int]):
-    """Создать простое цветное фото-заглушку без внешних библиотек."""
+    """Создать простое цветное фото-заглушку."""
     try:
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
     except ImportError:
         # Минимальный валидный JPEG 1x1, если Pillow не установлен
         file_path.write_bytes(
@@ -80,7 +56,7 @@ def create_placeholder_image(file_path: Path, title: str, color: tuple[int, int,
 
 
 def ensure_local_images():
-    """Скачать или создать фото услуг в bot/images/."""
+    """Создать фото услуг в bot/images/."""
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
     placeholders = {
@@ -90,18 +66,11 @@ def ensure_local_images():
         "consult.jpg": ("Консультация", (255, 140, 0)),
     }
 
-    for filename, url in IMAGE_DOWNLOAD_URLS.items():
+    for filename, (title, color) in placeholders.items():
         file_path = IMAGES_DIR / filename
-        if file_path.exists() and file_path.stat().st_size > 1000:
+        if file_path.exists() and file_path.stat().st_size > 100:
             continue
-
-        if download_image(url, file_path):
-            print(f"Скачано фото: {filename}")
-            continue
-
-        title, color = placeholders[filename]
         create_placeholder_image(file_path, title, color)
-        print(f"Создана заглушка: {filename}")
 
 
 def migrate_database():
@@ -130,28 +99,34 @@ def update_service_images():
 
 def seed_data():
     """Создать таблицы и заполнить тестовыми данными."""
-    migrate_database()
-    sync_admins_from_env()
-    ensure_local_images()
-    session = get_session()
-
     try:
-        if session.query(Service).count() == 0:
-            for name, duration, price, masters in SERVICES_DATA:
-                service = Service(
-                    name=name,
-                    duration_minutes=duration,
-                    price=price,
-                    image_url=SERVICE_IMAGES.get(name),
-                )
-                session.add(service)
-                session.flush()
+        migrate_database()
+        sync_admins_from_env()
+        ensure_local_images()
+        session = get_session()
 
-                for master_name in masters:
-                    session.add(Performer(name=master_name, service_id=service.id))
+        try:
+            if session.query(Service).count() == 0:
+                for name, duration, price, masters in SERVICES_DATA:
+                    service = Service(
+                        name=name,
+                        duration_minutes=duration,
+                        price=price,
+                        image_url=SERVICE_IMAGES.get(name),
+                    )
+                    session.add(service)
+                    session.flush()
 
-            session.commit()
-        else:
-            update_service_images()
-    finally:
-        session.close()
+                    for master_name in masters:
+                        session.add(Performer(name=master_name, service_id=service.id))
+
+                session.commit()
+            else:
+                update_service_images()
+        finally:
+            session.close()
+    except Exception as e:
+        print(f"Ошибка при инициализации БД: {e}")
+        import traceback
+        traceback.print_exc()
+
