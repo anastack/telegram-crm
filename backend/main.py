@@ -1,7 +1,6 @@
 """FastAPI — API для админ-панели."""
 
 import os
-import subprocess
 import sys
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time
@@ -25,23 +24,12 @@ from database.models import Appointment, Performer, Service, User
 from database.seed import seed_data
 
 
-def _start_bot():
-    """Запустить Telegram-бота в отдельном процессе."""
-    subprocess.Popen(
-        [sys.executable, "-m", "bot.main"],
-        cwd=str(ROOT),
-        start_new_session=True,
-    )
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_data()
-    if RUN_BOT and os.getenv("BOT_TOKEN"):
-        _start_bot()
-        print("Telegram-бот запущен в отдельном процессе")
     if not WEBAPP_URL:
         print("ВНИМАНИЕ: WEBAPP_URL не задан — админ-панель в Telegram недоступна")
+    print("FastAPI приложение запущено")
     yield
 
 
@@ -459,3 +447,4 @@ def list_performers(service_id: int | None = None, admin=Depends(require_admin))
 MINIAPP_DIR = ROOT / "miniapp"
 if MINIAPP_DIR.exists():
     app.mount("/miniapp", StaticFiles(directory=str(MINIAPP_DIR), html=True), name="miniapp")
+
