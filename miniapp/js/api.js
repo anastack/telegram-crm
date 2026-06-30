@@ -10,31 +10,45 @@ function getInitData() {
 function getHeaders() {
   const initData = getInitData();
   if (!initData) {
-    throw new Error("NO_TELEGRAM");
+    throw new Error("Мини-приложение должно быть открыто через Telegram");
   }
   return { "X-Telegram-Init-Data": initData };
 }
 
 async function apiRequest(path, options = {}) {
-  const headers = { ...getHeaders(), ...options.headers };
+  try {
+    const headers = { ...getHeaders(), ...options.headers };
 
-  if (options.body) {
-    headers["Content-Type"] = "application/json";
+    if (options.body) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    console.log(`[API] ${options.method || "GET"} ${path}`);
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      let detail = `Ошибка ${response.status}`;
+      try {
+        const err = await response.json();
+        detail = err.detail || detail;
+      } catch (e) {
+        // Не JSON ответ
+      }
+      console.error(`[API] Error ${response.status}:`, detail);
+      throw new Error(detail);
+    }
+
+    if (response.status === 204) return null;
+    const data = await response.json();
+    console.log(`[API] Success:`, data);
+    return data;
+  } catch (e) {
+    console.error(`[API] Request failed:`, e);
+    throw e;
   }
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    const detail = err.detail || `Ошибка ${response.status}`;
-    throw new Error(detail);
-  }
-
-  if (response.status === 204) return null;
-  return response.json();
 }
 
 const api = {
@@ -65,3 +79,4 @@ const api = {
       serviceId ? `/api/performers?service_id=${serviceId}` : "/api/performers"
     ),
 };
+
