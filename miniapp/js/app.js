@@ -12,13 +12,19 @@ let servicesCache = [], performersCache = [];
 // --- Инициализация ---
 
 document.addEventListener("DOMContentLoaded", async () => {
+  console.log("[App] DOMContentLoaded fired");
+  console.log("[App] tg object:", tg);
+  console.log("[App] tg.initData:", tg?.initData);
+
   // Только через Telegram Mini App
   if (!tg?.initData) {
+    console.log("[App] No initData, showing telegram gate");
     document.getElementById("telegram-gate").classList.remove("hidden");
     return;
   }
 
   try {
+    console.log("[App] Initializing Telegram WebApp");
     tg.ready();
     tg.expand();
     tg.setHeaderColor("#1a1d27");
@@ -26,22 +32,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("app-root").classList.remove("hidden");
 
+    console.log("[App] Fetching user info");
     const me = await api.me();
+    console.log("[App] User info:", me);
     document.getElementById("admin-name").textContent = me.first_name || "Админ";
 
     const now = new Date();
     calYear = now.getFullYear();
     calMonth = now.getMonth() + 1;
 
+    console.log("[App] Setting up UI");
     setupNavigation();
     setupCalendarControls();
     setupEditModal();
     setupFilters();
 
+    console.log("[App] Loading dashboard");
     loadPage("dashboard");
+    console.log("[App] Initialization complete");
   } catch (e) {
+    console.error("[App] Initialization error:", e);
     document.getElementById("app-root").classList.remove("hidden");
-    showError(e.message);
+    showError(e.message || String(e));
   }
 });
 
@@ -102,6 +114,7 @@ async function loadDashboard() {
     }
     listEl.innerHTML = data.upcoming.map(renderListItem).join("");
   } catch (e) {
+    console.error("[Dashboard] Error:", e);
     showError(e.message);
     statsEl.innerHTML = `<div class="error-banner">${e.message}</div>`;
     listEl.innerHTML = "";
@@ -130,6 +143,7 @@ async function loadCalendar() {
     calData = await api.calendar(calYear, calMonth);
     renderCalendarGrid();
   } catch (e) {
+    console.error("[Calendar] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -246,6 +260,7 @@ async function loadClients(query = "") {
       `).join("")}</tbody>
     </table>`;
   } catch (e) {
+    console.error("[Clients] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -289,6 +304,7 @@ async function loadAppointments(status = "") {
       `).join("")}</tbody>
     </table>`;
   } catch (e) {
+    console.error("[Appointments] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -300,6 +316,7 @@ async function quickStatus(id, status) {
     showToast("Статус обновлён", "success");
     loadAppointments(document.getElementById("filter-status").value);
   } catch (e) {
+    console.error("[QuickStatus] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -320,6 +337,7 @@ async function loadStatistics() {
     renderBarChart("chart-services", data.by_service);
     renderBarChart("chart-performers", data.by_performer);
   } catch (e) {
+    console.error("[Statistics] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -366,6 +384,7 @@ function setupEditModal() {
       closeModal();
       reloadCurrentPage();
     } catch (e) {
+      console.error("[EditForm] Error:", e);
       showToast(e.message, "error");
     }
   });
@@ -379,6 +398,7 @@ function setupEditModal() {
       closeModal();
       reloadCurrentPage();
     } catch (e) {
+      console.error("[CancelAppt] Error:", e);
       showToast(e.message, "error");
     }
   });
@@ -403,6 +423,7 @@ async function openEditModal(id) {
 
     document.getElementById("modal").classList.remove("hidden");
   } catch (e) {
+    console.error("[EditModal] Error:", e);
     showToast(e.message, "error");
   }
 }
@@ -466,16 +487,20 @@ function showToast(msg, type = "") {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
   toast.className = `toast ${type}`;
+  toast.classList.remove("hidden");
+  console.log(`[Toast] ${type}: ${msg}`);
   setTimeout(() => toast.classList.add("hidden"), 4000);
 }
 
 function showError(msg) {
+  console.error("[Error]", msg);
   const banner = document.getElementById("error-banner");
   if (banner) {
     banner.textContent = "⚠️ " + msg;
     banner.classList.remove("hidden");
   } else {
-    alert(msg);
+    console.warn("[Error] error-banner not found, showing toast instead");
+    showToast("⚠️ " + msg, "error");
   }
 }
 
@@ -497,3 +522,4 @@ function showPageError(page, msg) {
 // Глобальные функции для onclick в HTML
 window.openEditModal = openEditModal;
 window.quickStatus = quickStatus;
+
